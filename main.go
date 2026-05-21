@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -23,12 +22,12 @@ type frontMatter struct {
 }
 
 type card struct {
-	ID      string
-	Title   string
-	Author  string
-	HTML    template.HTML
-	Preview string
-	Image   string
+	ID          string
+	Title       string
+	Author      string
+	HTML        template.HTML
+	PreviewHTML template.HTML
+	Image       string
 }
 
 type pageData struct {
@@ -54,8 +53,6 @@ func defaultConfig() appConfig {
 		},
 	}
 }
-
-var whitespaceRE = regexp.MustCompile(`\s+`)
 
 func main() {
 	if len(os.Args) < 2 || len(os.Args) > 3 {
@@ -194,12 +191,12 @@ func parseCard(path, inputDir, outputDir string, index int) (card, error) {
 	}
 
 	return card{
-		ID:      fmt.Sprintf("card-%d", index),
-		Title:   title,
-		Author:  strings.TrimSpace(meta.Author),
-		HTML:    template.HTML(htmlContent),
-		Preview: buildPreview(body),
-		Image:   imageWebPath,
+		ID:          fmt.Sprintf("card-%d", index),
+		Title:       title,
+		Author:      strings.TrimSpace(meta.Author),
+		HTML:        template.HTML(htmlContent),
+		PreviewHTML: template.HTML(htmlContent),
+		Image:       imageWebPath,
 	}, nil
 }
 
@@ -231,20 +228,6 @@ func markdownToHTML(markdown string) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
-}
-
-func buildPreview(markdown string) string {
-	clean := strings.TrimSpace(markdown)
-	clean = strings.ReplaceAll(clean, "#", "")
-	clean = strings.ReplaceAll(clean, "*", "")
-	clean = strings.ReplaceAll(clean, "_", "")
-	clean = strings.ReplaceAll(clean, "`", "")
-	clean = whitespaceRE.ReplaceAllString(clean, " ")
-
-	if len(clean) <= 160 {
-		return clean
-	}
-	return strings.TrimSpace(clean[:157]) + "..."
 }
 
 func resolveImagePath(frontMatterImage, markdownPath string) (string, error) {
@@ -364,20 +347,25 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			opacity: 0.8;
 		}
     .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
+			column-count: 3;
+			column-gap: 0.3rem;
     }
     .card {
-      width: 100%;
+			display: inline-block;
+			width: 100%;
+			height: auto;
+			align-self: start;
       text-align: left;
       border: 1px solid var(--line);
       border-radius: 18px;
       padding: 1rem;
+			margin: 0 0 0.3rem;
       background: var(--card);
       box-shadow: var(--shadow);
       cursor: pointer;
       transition: transform 180ms ease, box-shadow 180ms ease;
+			break-inside: avoid;
+			-webkit-column-break-inside: avoid;
     }
     .card:hover { transform: translateY(-4px) rotate(-0.5deg); }
     .author {
@@ -395,6 +383,13 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
       margin: 0.5rem 0 0;
       line-height: 1.45;
       opacity: 0.9;
+			text-wrap: pretty;
+		}
+		.preview p:first-child { margin-top: 0; }
+		.preview p:last-child { margin-bottom: 0; }
+		.preview ul, .preview ol {
+			margin: 0.5rem 0;
+			padding-left: 1.2rem;
     }
     .thumb {
       width: 100%;
@@ -456,7 +451,11 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
       border: 1px solid var(--line);
       margin-bottom: 1rem;
     }
-    @media (max-width: 640px) {
+		@media (max-width: 980px) {
+			.grid { column-count: 2; }
+		}
+		@media (max-width: 640px) {
+			.grid { column-count: 1; }
       .wrap { padding-top: 2rem; }
       .dialog-inner { padding: 1rem; }
     }
@@ -472,7 +471,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
       <button type="button" class="card" data-target="{{ .ID }}">
         <p class="author">{{ .Author }}</p>
         <h2 class="title">{{ .Title }}</h2>
-        <p class="preview">{{ .Preview }}</p>
+		<section class="preview">{{ .PreviewHTML }}</section>
         {{- if .Image }}
         <img src="{{ .Image }}" alt="Image for {{ .Title }}" class="thumb" />
         {{- end }}
