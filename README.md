@@ -3,6 +3,12 @@
 A static site generator for making beautiful group and office greeting cards
 for loved ones.
 
+[Example demo site](https://aae42.github.io/patchwork/).
+
+It's like [kudoboard](https://www.kudoboard.com/)
+(which it draws heavy inspiration from) but for nerds who can contribute
+markdown to a git repository.
+
 ## What It Does
 
 `patchwork` is a command line tool that reads a single board directory of
