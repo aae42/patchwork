@@ -34,16 +34,22 @@ type card struct {
 type pageData struct {
 	PageTitle    string
 	PageSubtitle string
+	FooterEnabled bool
 	Cards        []card
 }
 
 type appConfig struct {
-	Page pageConfig `yaml:"page"`
+	Page   pageConfig   `yaml:"page"`
+	Footer footerConfig `yaml:"footer"`
 }
 
 type pageConfig struct {
 	Title    string `yaml:"title"`
 	Subtitle string `yaml:"subtitle"`
+}
+
+type footerConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 const maxPostCharacters = 3000
@@ -53,6 +59,9 @@ func defaultConfig() appConfig {
 		Page: pageConfig{
 			Title:    "Patchwork Cards",
 			Subtitle: "Each tile is a stitched-together note from the people who care about you most.",
+		},
+		Footer: footerConfig{
+			Enabled: true,
 		},
 	}
 }
@@ -471,6 +480,22 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
       border: 1px solid var(--line);
       margin-bottom: 1rem;
     }
+		.site-footer {
+			margin-top: 1.5rem;
+			font-size: 0.68rem;
+			opacity: 0.65;
+			letter-spacing: 0.02em;
+			text-align: center;
+		}
+		.site-footer p {
+			margin: 0;
+		}
+		.site-footer a {
+			color: inherit;
+		}
+		.site-footer a:hover {
+			opacity: 0.8;
+		}
 		@media (max-width: 640px) {
 			.column {
 				width: 100%;
@@ -502,6 +527,11 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			</button>
 			{{- end }}
 		</div>
+		{{- if .FooterEnabled }}
+		<footer class="site-footer">
+			<p>built with <span aria-hidden="true">&#10084;&#65039;</span> with <a href="https://github.com/aae42/patchwork">patchwork</a></p>
+		</footer>
+		{{- end }}
   </main>
 
   {{- range .Cards }}
@@ -621,9 +651,10 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 	defer f.Close()
 
 	if err := tmpl.Execute(f, pageData{
-		PageTitle:    config.Page.Title,
-		PageSubtitle: config.Page.Subtitle,
-		Cards:        cards,
+		PageTitle:     config.Page.Title,
+		PageSubtitle:  config.Page.Subtitle,
+		FooterEnabled: config.Footer.Enabled,
+		Cards:         cards,
 	}); err != nil {
 		return err
 	}

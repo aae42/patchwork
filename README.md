@@ -24,9 +24,13 @@ inside the board directory to set page text:
 page:
   title: Team Tribute Board
   subtitle: A collection of notes from everyone cheering you on.
+
+footer:
+  enabled: true
 ```
 
 If `patchwork.yaml` is missing in the board directory, default page text is used.
+The footer is enabled by default. Set `footer.enabled: false` to hide it.
 
 ## Input Format
 

@@ -1,3 +1,6 @@
 page:
   title: Celebration Board
   subtitle: A patchwork of notes from people cheering you on.
+
+footer:
+  enabled: true
