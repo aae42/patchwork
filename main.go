@@ -351,12 +351,18 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
       letter-spacing: 0.02em;
     }
     .lead {
-      margin: 0 0 2rem;
+			margin: 0;
       font-size: 1.05rem;
       max-width: 58ch;
       line-height: 1.55;
       opacity: 0.9;
     }
+		.lead + .lead {
+			margin-top: 0.4rem;
+			margin-bottom: 2rem;
+			font-size: 0.98rem;
+			opacity: 0.8;
+		}
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
