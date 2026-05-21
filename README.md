@@ -5,8 +5,9 @@ for loved ones.
 
 ## What It Does
 
-`patchwork` is a command line tool that reads a directory of markdown documents
-and builds a static web page at `public/index.html` by default.
+`patchwork` is a command line tool that reads a single board directory of
+markdown documents and builds a static web page at `public/index.html` by
+default.
 
 The generated page:
 
@@ -27,6 +28,10 @@ page:
 If `patchwork.yaml` is missing in the board directory, default page text is used.
 
 ## Input Format
+
+The input argument must point to one board directory (for example,
+`./examples/boards/celebration`). Markdown files are read from that directory
+only.
 
 Each markdown file can include YAML front matter. `author` is supported now,
 with optional `title` and `image`.

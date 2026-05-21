@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -114,26 +113,25 @@ func main() {
 func loadCards(inputDir, outputDir string) ([]card, error) {
 	var cards []card
 
-	err := filepath.WalkDir(inputDir, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if strings.ToLower(filepath.Ext(d.Name())) != ".md" {
-			return nil
-		}
-
-		c, err := parseCard(path, inputDir, outputDir, len(cards)+1)
-		if err != nil {
-			return fmt.Errorf("parse %s: %w", path, err)
-		}
-		cards = append(cards, c)
-		return nil
-	})
+	entries, err := os.ReadDir(inputDir)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if strings.ToLower(filepath.Ext(entry.Name())) != ".md" {
+			continue
+		}
+
+		path := filepath.Join(inputDir, entry.Name())
+		c, err := parseCard(path, inputDir, outputDir, len(cards)+1)
+		if err != nil {
+			return nil, fmt.Errorf("parse %s: %w", path, err)
+		}
+		cards = append(cards, c)
 	}
 
 	sort.Slice(cards, func(i, j int) bool {

@@ -6,7 +6,7 @@ build:
   mkdir -p build
   go build -o build/patchwork main.go
 
-run INPUT='examples/boards':
+run INPUT='examples/boards/celebration':
   go run main.go {{INPUT}} public/
 
 serve:
