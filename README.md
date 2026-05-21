@@ -36,6 +36,9 @@ only.
 Each markdown file can include YAML front matter. `author` is supported now,
 with optional `title` and `image`.
 
+Each post is limited to 3000 characters of markdown content after front matter.
+If a post goes over that limit, the CLI will report a file-specific error.
+
 ```md
 ---
 author: Alex Rivera

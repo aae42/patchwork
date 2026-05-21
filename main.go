@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/yuin/goldmark"
 	"gopkg.in/yaml.v3"
@@ -44,6 +45,8 @@ type pageConfig struct {
 	Title    string `yaml:"title"`
 	Subtitle string `yaml:"subtitle"`
 }
+
+const maxPostCharacters = 3000
 
 func defaultConfig() appConfig {
 	return appConfig{
@@ -151,6 +154,11 @@ func parseCard(path, inputDir, outputDir string, index int) (card, error) {
 
 	if strings.TrimSpace(meta.Author) == "" {
 		meta.Author = "Anonymous"
+	}
+
+	postCharacters := utf8.RuneCountInString(body)
+	if postCharacters > maxPostCharacters {
+		return card{}, fmt.Errorf("%s has %d characters, but the maximum allowed is %d. Shorten this post or split it into a new board.", path, postCharacters, maxPostCharacters)
 	}
 
 	htmlContent, err := markdownToHTML(body)
@@ -346,26 +354,38 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			font-size: 0.98rem;
 			opacity: 0.8;
 		}
-    .grid {
-			column-count: 3;
-			column-gap: 0.3rem;
+    .board {
+			display: flex;
+			gap: 0.3rem;
+			align-items: flex-start;
+			opacity: 0;
+			transition: opacity 120ms ease;
+    }
+    .column {
+			flex: 1 1 0;
+			display: flex;
+			flex-direction: column;
+			gap: 0.3rem;
+    }
+    .card-source {
+			position: absolute;
+			left: -99999px;
+			top: 0;
+			visibility: hidden;
     }
     .card {
-			display: inline-block;
 			width: 100%;
 			height: auto;
-			align-self: start;
+			align-self: stretch;
       text-align: left;
       border: 1px solid var(--line);
       border-radius: 18px;
       padding: 1rem;
-			margin: 0 0 0.3rem;
+			margin: 0;
       background: var(--card);
       box-shadow: var(--shadow);
       cursor: pointer;
       transition: transform 180ms ease, box-shadow 180ms ease;
-			break-inside: avoid;
-			-webkit-column-break-inside: avoid;
     }
     .card:hover { transform: translateY(-4px) rotate(-0.5deg); }
     .author {
@@ -451,11 +471,10 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
       border: 1px solid var(--line);
       margin-bottom: 1rem;
     }
-		@media (max-width: 980px) {
-			.grid { column-count: 2; }
-		}
 		@media (max-width: 640px) {
-			.grid { column-count: 1; }
+			.column {
+				width: 100%;
+			}
       .wrap { padding-top: 2rem; }
       .dialog-inner { padding: 1rem; }
     }
@@ -466,18 +485,23 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 		<h1>{{ .PageTitle }}</h1>
 		<p class="lead">{{ .PageSubtitle }}</p>
 		<p class="lead">Click any card to open the full note.</p>
-    <section class="grid">
-      {{- range .Cards }}
-      <button type="button" class="card" data-target="{{ .ID }}">
-        <p class="author">{{ .Author }}</p>
-        <h2 class="title">{{ .Title }}</h2>
+		<section class="board" aria-label="Patchwork board">
+			<div class="column" data-column></div>
+			<div class="column" data-column></div>
+			<div class="column" data-column></div>
+		</section>
+		<div id="card-source" class="card-source">
+			{{- range .Cards }}
+			<button type="button" class="card" data-target="{{ .ID }}">
+				<p class="author">{{ .Author }}</p>
+				<h2 class="title">{{ .Title }}</h2>
 		<section class="preview">{{ .PreviewHTML }}</section>
-        {{- if .Image }}
-        <img src="{{ .Image }}" alt="Image for {{ .Title }}" class="thumb" />
-        {{- end }}
-      </button>
-      {{- end }}
-    </section>
+				{{- if .Image }}
+				<img src="{{ .Image }}" alt="Image for {{ .Title }}" class="thumb" />
+				{{- end }}
+			</button>
+			{{- end }}
+		</div>
   </main>
 
   {{- range .Cards }}
@@ -499,26 +523,87 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
   {{- end }}
 
   <script>
-    for (const card of document.querySelectorAll('[data-target]')) {
-      card.addEventListener('click', () => {
-        const dialog = document.getElementById(card.dataset.target);
-        if (dialog) dialog.showModal();
-      });
-    }
+		function bindDialogs() {
+			for (const dialog of document.querySelectorAll('dialog')) {
+				const closeBtn = dialog.querySelector('.close');
+				if (closeBtn) {
+					closeBtn.addEventListener('click', () => dialog.close());
+				}
 
-    for (const dialog of document.querySelectorAll('dialog')) {
-      const closeBtn = dialog.querySelector('.close');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', () => dialog.close());
-      }
+				dialog.addEventListener('click', (event) => {
+					const rect = dialog.getBoundingClientRect();
+					const inDialog = rect.top <= event.clientY && event.clientY <= rect.bottom &&
+						rect.left <= event.clientX && event.clientX <= rect.right;
+					if (!inDialog) dialog.close();
+				});
+			}
+		}
 
-      dialog.addEventListener('click', (event) => {
-        const rect = dialog.getBoundingClientRect();
-        const inDialog = rect.top <= event.clientY && event.clientY <= rect.bottom &&
-          rect.left <= event.clientX && event.clientX <= rect.right;
-        if (!inDialog) dialog.close();
-      });
-    }
+		function bindCardClicks() {
+			for (const card of document.querySelectorAll('[data-target]')) {
+				card.addEventListener('click', () => {
+					const dialog = document.getElementById(card.dataset.target);
+					if (dialog) dialog.showModal();
+				});
+			}
+		}
+
+		function layoutBoard() {
+			const board = document.querySelector('.board');
+			const columns = [...document.querySelectorAll('[data-column]')];
+			const source = document.getElementById('card-source');
+			const desiredColumns = window.innerWidth <= 640 ? 1 : window.innerWidth <= 980 ? 2 : 3;
+			const cards = [...document.querySelectorAll('#card-source .card, .board .card')];
+
+			columns.forEach((column, index) => {
+				column.style.display = index < desiredColumns ? 'flex' : 'none';
+			});
+
+			const visibleColumns = columns.slice(0, desiredColumns);
+
+			for (const column of visibleColumns) {
+				column.replaceChildren();
+			}
+			for (const card of cards) {
+				source.appendChild(card);
+			}
+
+			const measureHost = document.createElement('div');
+			measureHost.style.position = 'absolute';
+			measureHost.style.left = '-99999px';
+			measureHost.style.top = '0';
+			measureHost.style.visibility = 'hidden';
+			measureHost.style.width = visibleColumns[0].getBoundingClientRect().width + 'px';
+			document.body.appendChild(measureHost);
+
+			for (const card of cards) {
+				const probe = card.cloneNode(true);
+				probe.style.width = '100%';
+				measureHost.appendChild(probe);
+				const shortestColumn = visibleColumns.reduce((shortest, candidate) => {
+					return candidate.offsetHeight < shortest.offsetHeight ? candidate : shortest;
+				});
+				shortestColumn.appendChild(card);
+				measureHost.removeChild(probe);
+			}
+
+			document.body.removeChild(measureHost);
+			source.style.display = 'none';
+			board.style.opacity = '1';
+		}
+
+		bindDialogs();
+		bindCardClicks();
+
+		window.addEventListener('load', () => {
+			layoutBoard();
+		});
+
+		let resizeTimer;
+		window.addEventListener('resize', () => {
+			window.clearTimeout(resizeTimer);
+			resizeTimer = window.setTimeout(layoutBoard, 120);
+		});
   </script>
 </body>
 </html>
