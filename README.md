@@ -71,3 +71,17 @@ go run . ./examples/boards/celebration ./site
 
 After running, open `public/index.html` in your browser (or `<output-dir>/index.html`
 if you provided an output directory).
+
+## Deploy A Board to GitHub Pages
+
+This repo includes a workflow at `.github/workflows/deploy-example-board.yml` that builds
+`examples/boards/celebration` and deploys `public/` to GitHub Pages.
+
+1. Push this repo to GitHub.
+2. In GitHub, open **Settings -> Pages**.
+3. Set **Source** to **GitHub Actions**.
+4. Push to `main` (or run the workflow manually from **Actions**).
+
+After the workflow completes, your board is published.
+
+See the example board here: <https://aae42.github.io/patchwork/>
