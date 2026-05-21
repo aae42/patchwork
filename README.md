@@ -17,7 +17,8 @@ The generated page:
 
 ## Board Config
 
-Create or edit `patchwork.yaml` inside the board directory to set page text:
+Create or edit `patchwork.yaml` ([example](examples/boards/celebration/patchwork.yaml))
+inside the board directory to set page text:
 
 ```yaml
 page:
@@ -30,7 +31,7 @@ If `patchwork.yaml` is missing in the board directory, default page text is used
 ## Input Format
 
 The input argument must point to one board directory (for example,
-`./examples/boards/celebration`). Markdown files are read from that directory
+[`./examples/boards/celebration`](examples/boards/celebration)). Markdown files are read from that directory
 only.
 
 Each markdown file can include YAML front matter. `author` is supported now,
@@ -74,8 +75,9 @@ if you provided an output directory).
 
 ## Deploy A Board to GitHub Pages
 
-This repo includes a workflow at `.github/workflows/deploy-example-board.yml` that builds
-`examples/boards/celebration` and deploys `public/` to GitHub Pages.
+This repo includes a workflow at [`.github/workflows/deploy-example-board.yml`](.github/workflows/deploy-example-board.yml)
+that builds [`examples/boards/celebration`](examples/boards/celebration) and
+deploys `public/` to GitHub Pages.
 
 1. Push this repo to GitHub.
 2. In GitHub, open **Settings -> Pages**.
