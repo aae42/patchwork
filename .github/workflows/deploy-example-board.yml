@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/deploy-example-board.yml'
+      - 'VERSION'
       - 'main.go'
       - 'go.mod'
       - 'go.sum'
@@ -36,7 +37,10 @@ jobs:
           cache: true
 
       - name: Build celebration board
-        run: go run . examples/boards/celebration public
+        run: |
+          VERSION=$(cat VERSION)
+          go build -ldflags "-s -w -X main.version=${VERSION}" -o patchwork .
+          ./patchwork examples/boards/celebration public
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -32,10 +32,10 @@ type card struct {
 }
 
 type pageData struct {
-	PageTitle    string
-	PageSubtitle string
+	PageTitle     string
+	PageSubtitle  string
 	FooterEnabled bool
-	Cards        []card
+	Cards         []card
 }
 
 type appConfig struct {
@@ -52,6 +52,9 @@ type footerConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
+// version is set at build time via -ldflags.
+var version = "dev"
+
 const maxPostCharacters = 3000
 
 func defaultConfig() appConfig {
@@ -67,6 +70,11 @@ func defaultConfig() appConfig {
 }
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Println(version)
+		return
+	}
+
 	if len(os.Args) < 2 || len(os.Args) > 3 {
 		fmt.Fprintf(os.Stderr, "usage: %s <path-to-board-dir> [output-dir]\n", filepath.Base(os.Args[0]))
 		os.Exit(1)
@@ -649,6 +657,8 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 		return err
 	}
 	defer f.Close()
+
+	fmt.Fprintf(f, "<!-- built with patchwork v%s -->\n", version)
 
 	if err := tmpl.Execute(f, pageData{
 		PageTitle:     config.Page.Title,
