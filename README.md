@@ -97,3 +97,18 @@ deploys `public/` to GitHub Pages.
 After the workflow completes, your board is published.
 
 See the example board here: <https://aae42.github.io/patchwork/>
+
+## Releases
+
+This repo includes a Goreleaser configuration at [.goreleaser.yaml](.goreleaser.yaml)
+and a tag-triggered workflow at [.github/workflows/release.yml](.github/workflows/release.yml).
+
+To cut a release, create and push a version tag such as `v0.1.0`:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions will build release archives and checksums for macOS, Linux, and
+Windows.
