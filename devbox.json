@@ -6,7 +6,8 @@
     "caddy": {
       "version":        "latest",
       "disable_plugin": true
-    }
+    },
+    "goreleaser": "latest"
   },
   "shell": {
     "init_hook": [
