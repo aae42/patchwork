@@ -373,6 +373,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 		}
     .board {
 			display: flex;
+			margin-top: 1rem;
 			gap: 0.3rem;
 			align-items: flex-start;
 			opacity: 0;
@@ -517,7 +518,6 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
   <main class="wrap">
 		<h1>{{ .PageTitle }}</h1>
 		<p class="lead">{{ .PageSubtitle }}</p>
-		<p class="lead">Click any card to open the full note.</p>
 		<section class="board" aria-label="Patchwork board">
 			<div class="column" data-column></div>
 			<div class="column" data-column></div>
