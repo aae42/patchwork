@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"errors"
 	"fmt"
 	"html/template"
@@ -54,6 +55,9 @@ type footerConfig struct {
 
 // version is set at build time via -ldflags.
 var version = "dev"
+
+//go:embed logo.svg
+var defaultLogoSVG []byte
 
 const maxPostCharacters = 3000
 
@@ -110,6 +114,9 @@ func main() {
 	}
 	if err := os.MkdirAll(filepath.Join(outputDir, "assets"), 0o755); err != nil {
 		exitErr(fmt.Errorf("create output directories: %w", err))
+	}
+	if err := writeFavicon(outputDir); err != nil {
+		exitErr(fmt.Errorf("write favicon: %w", err))
 	}
 
 	cards, err := loadCards(boardDir, outputDir)
@@ -298,6 +305,14 @@ func copyFile(sourcePath, targetPath string) error {
 	return dst.Close()
 }
 
+func writeFavicon(outputDir string) error {
+	targetPath := filepath.Join(outputDir, "assets", "logo.svg")
+	if err := os.WriteFile(targetPath, defaultLogoSVG, 0o644); err != nil {
+		return err
+	}
+	return nil
+}
+
 func loadConfig(path string) (appConfig, error) {
 	config := defaultConfig()
 
@@ -330,6 +345,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ .PageTitle }}</title>
+	<link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <style>
     :root {
       --bg-a: #f4efe6;

@@ -1,5 +1,7 @@
 # patchwork
 
+<img src="logo.svg" alt="Patchwork logo" width="100" align="left" hspace="14" />
+
 A static site generator for making beautiful group and office greeting cards
 for loved ones.
 
