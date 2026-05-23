@@ -103,11 +103,11 @@ See the example board here: <https://aae42.github.io/patchwork/>
 This repo includes a Goreleaser configuration at [.goreleaser.yaml](.goreleaser.yaml)
 and a tag-triggered workflow at [.github/workflows/release.yml](.github/workflows/release.yml).
 
-To cut a release, create and push a version tag such as `v0.1.0`:
+To cut a release, create and push a version tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag "v$(cat VERSION)"
+git push origin "v$(cat VERSION)"
 ```
 
 GitHub Actions will build release archives and checksums for macOS, Linux, and
