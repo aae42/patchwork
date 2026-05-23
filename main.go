@@ -574,6 +574,9 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 						rect.left <= event.clientX && event.clientX <= rect.right;
 					if (!inDialog) dialog.close();
 				});
+				dialog.addEventListener('close', () => {
+					document.body.style.overflow = '';
+				});
 			}
 		}
 
@@ -581,7 +584,10 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			for (const card of document.querySelectorAll('[data-target]')) {
 				card.addEventListener('click', () => {
 					const dialog = document.getElementById(card.dataset.target);
-					if (dialog) dialog.showModal();
+					if (dialog) {
+						dialog.showModal();
+						document.body.style.overflow = 'hidden';
+					}
 				});
 			}
 		}
