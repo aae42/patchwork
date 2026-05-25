@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"image"
+	"image/draw"
+	"image/jpeg"
 	"io"
 	"os"
 	"path/filepath"
@@ -30,6 +33,7 @@ type card struct {
 	HTML        template.HTML
 	PreviewHTML template.HTML
 	Image       string
+	ThumbImage  string
 }
 
 type pageData struct {
@@ -60,6 +64,12 @@ var version = "dev"
 var defaultLogoSVG []byte
 
 const maxPostCharacters = 3000
+
+const (
+	thumbMaxWidth  = 640
+	thumbMaxHeight = 420
+	thumbJPEGQ     = 80
+)
 
 func defaultConfig() appConfig {
 	return appConfig{
@@ -201,6 +211,7 @@ func parseCard(path, inputDir, outputDir string, index int) (card, error) {
 	}
 
 	imageWebPath := ""
+	thumbWebPath := ""
 	if imagePath != "" {
 		relImagePath, err := filepath.Rel(inputDir, imagePath)
 		if err != nil {
@@ -215,6 +226,15 @@ func parseCard(path, inputDir, outputDir string, index int) (card, error) {
 			return card{}, fmt.Errorf("copy image %s: %w", imagePath, err)
 		}
 		imageWebPath = filepath.ToSlash(filepath.Join("assets", relImagePath))
+		thumbWebPath = imageWebPath
+
+		thumbRelPath, generated, err := maybeCreateThumbnail(imagePath, relImagePath, outputDir)
+		if err != nil {
+			return card{}, fmt.Errorf("create thumbnail %s: %w", imagePath, err)
+		}
+		if generated {
+			thumbWebPath = filepath.ToSlash(filepath.Join("assets", thumbRelPath))
+		}
 	}
 
 	title := strings.TrimSpace(meta.Title)
@@ -229,7 +249,103 @@ func parseCard(path, inputDir, outputDir string, index int) (card, error) {
 		HTML:        template.HTML(htmlContent),
 		PreviewHTML: template.HTML(htmlContent),
 		Image:       imageWebPath,
+		ThumbImage:  thumbWebPath,
 	}, nil
+}
+
+func maybeCreateThumbnail(imagePath, relImagePath, outputDir string) (string, bool, error) {
+	ext := strings.ToLower(filepath.Ext(imagePath))
+	if ext != ".jpg" && ext != ".jpeg" {
+		return "", false, nil
+	}
+
+	srcFile, err := os.Open(imagePath)
+	if err != nil {
+		return "", false, err
+	}
+	defer srcFile.Close()
+
+	srcImage, _, err := image.Decode(srcFile)
+	if err != nil {
+		return "", false, err
+	}
+
+	bounds := srcImage.Bounds()
+	srcWidth := bounds.Dx()
+	srcHeight := bounds.Dy()
+
+	dstWidth, dstHeight := fitInside(srcWidth, srcHeight, thumbMaxWidth, thumbMaxHeight)
+	if dstWidth == srcWidth && dstHeight == srcHeight {
+		return "", false, nil
+	}
+
+	resized := resizeNearest(srcImage, dstWidth, dstHeight)
+	thumbRelPath := filepath.Join("thumbs", strings.TrimSuffix(relImagePath, filepath.Ext(relImagePath))+".jpg")
+	thumbOutputPath := filepath.Join(outputDir, "assets", thumbRelPath)
+	if err := os.MkdirAll(filepath.Dir(thumbOutputPath), 0o755); err != nil {
+		return "", false, err
+	}
+
+	dstFile, err := os.Create(thumbOutputPath)
+	if err != nil {
+		return "", false, err
+	}
+	defer dstFile.Close()
+
+	if err := jpeg.Encode(dstFile, resized, &jpeg.Options{Quality: thumbJPEGQ}); err != nil {
+		return "", false, err
+	}
+
+	if err := dstFile.Close(); err != nil {
+		return "", false, err
+	}
+
+	return thumbRelPath, true, nil
+}
+
+func fitInside(srcWidth, srcHeight, maxWidth, maxHeight int) (int, int) {
+	if srcWidth <= 0 || srcHeight <= 0 {
+		return maxWidth, maxHeight
+	}
+	if srcWidth <= maxWidth && srcHeight <= maxHeight {
+		return srcWidth, srcHeight
+	}
+
+	widthLimitedHeight := srcHeight * maxWidth / srcWidth
+	if widthLimitedHeight <= maxHeight {
+		return maxWidth, max(1, widthLimitedHeight)
+	}
+
+	heightLimitedWidth := srcWidth * maxHeight / srcHeight
+	return max(1, heightLimitedWidth), maxHeight
+}
+
+func resizeNearest(src image.Image, dstWidth, dstHeight int) *image.RGBA {
+	if dstWidth < 1 {
+		dstWidth = 1
+	}
+	if dstHeight < 1 {
+		dstHeight = 1
+	}
+
+	srcBounds := src.Bounds()
+	srcWidth := srcBounds.Dx()
+	srcHeight := srcBounds.Dy()
+
+	dst := image.NewRGBA(image.Rect(0, 0, dstWidth, dstHeight))
+	for y := 0; y < dstHeight; y++ {
+		srcY := srcBounds.Min.Y + y*srcHeight/dstHeight
+		for x := 0; x < dstWidth; x++ {
+			srcX := srcBounds.Min.X + x*srcWidth/dstWidth
+			dst.Set(x, y, src.At(srcX, srcY))
+		}
+	}
+
+	flattened := image.NewRGBA(dst.Bounds())
+	draw.Draw(flattened, flattened.Bounds(), image.NewUniform(image.White), image.Point{}, draw.Src)
+	draw.Draw(flattened, flattened.Bounds(), dst, image.Point{}, draw.Over)
+
+	return flattened
 }
 
 func extractFrontMatter(raw []byte) (frontMatter, string, error) {
@@ -395,6 +511,27 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			opacity: 0;
 			transition: opacity 120ms ease;
     }
+		.image-loading {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			margin-top: 0.6rem;
+			font-size: 0.92rem;
+			letter-spacing: 0.01em;
+			opacity: 0.9;
+		}
+		.image-loading[hidden] {
+			display: none;
+		}
+		.image-loading::before {
+			content: "";
+			width: 0.9rem;
+			height: 0.9rem;
+			border: 2px solid var(--line);
+			border-top-color: var(--accent);
+			border-radius: 50%;
+			animation: spin 0.9s linear infinite;
+		}
     .column {
 			flex: 1 1 0;
 			display: flex;
@@ -521,6 +658,9 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 		.site-footer a:hover {
 			opacity: 0.8;
 		}
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
 		@media (max-width: 640px) {
 			.column {
 				width: 100%;
@@ -534,6 +674,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
   <main class="wrap">
 		<h1>{{ .PageTitle }}</h1>
 		<p class="lead">{{ .PageSubtitle }}</p>
+		<p id="image-loading" class="image-loading" aria-live="polite" hidden>Loading photos...</p>
 		<section class="board" aria-label="Patchwork board">
 			<div class="column" data-column></div>
 			<div class="column" data-column></div>
@@ -546,7 +687,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 				<h2 class="title">{{ .Title }}</h2>
 		<section class="preview">{{ .PreviewHTML }}</section>
 				{{- if .Image }}
-				<img src="{{ .Image }}" alt="Image for {{ .Title }}" class="thumb" />
+				<img src="{{ .ThumbImage }}" alt="Image for {{ .Title }}" class="thumb" loading="eager" decoding="async" fetchpriority="low" data-track-load="true" />
 				{{- end }}
 			</button>
 			{{- end }}
@@ -569,7 +710,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
         <button class="close" type="button" aria-label="Close">X</button>
       </div>
       {{- if .Image }}
-      <img src="{{ .Image }}" alt="Image for {{ .Title }}" class="hero" />
+			<img data-src="{{ .Image }}" alt="Image for {{ .Title }}" class="hero lazy-hero" loading="lazy" decoding="async" />
       {{- end }}
       <section class="content">{{ .HTML }}</section>
     </article>
@@ -601,10 +742,50 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 				card.addEventListener('click', () => {
 					const dialog = document.getElementById(card.dataset.target);
 					if (dialog) {
+						hydrateDialogImage(dialog);
 						dialog.showModal();
 						document.body.style.overflow = 'hidden';
 					}
 				});
+			}
+		}
+
+		function hydrateDialogImage(dialog) {
+			const img = dialog.querySelector('.lazy-hero[data-src]');
+			if (img && !img.getAttribute('src')) {
+				img.setAttribute('src', img.dataset.src);
+			}
+		}
+
+		function bindImageLoadingIndicator() {
+			const indicator = document.getElementById('image-loading');
+			const thumbs = [...document.querySelectorAll('.thumb[data-track-load="true"]')];
+			if (!indicator || thumbs.length === 0) {
+				return;
+			}
+
+			let pending = 0;
+			const onDone = () => {
+				pending -= 1;
+				if (pending <= 0) {
+					indicator.hidden = true;
+				}
+			};
+
+			for (const image of thumbs) {
+				if (image.complete) {
+					continue;
+				}
+				pending += 1;
+				image.addEventListener('load', onDone, { once: true });
+				image.addEventListener('error', onDone, { once: true });
+			}
+
+			indicator.hidden = pending === 0;
+			if (pending > 0) {
+				window.setTimeout(() => {
+					indicator.hidden = true;
+				}, 12000);
 			}
 		}
 
@@ -652,10 +833,25 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			board.style.opacity = '1';
 		}
 
+		function bindThumbRelayout() {
+			for (const image of document.querySelectorAll('#card-source .thumb')) {
+				image.addEventListener('load', debouncedLayoutBoard, { once: true });
+				image.addEventListener('error', debouncedLayoutBoard, { once: true });
+			}
+		}
+
+		let layoutTimer;
+		function debouncedLayoutBoard() {
+			window.clearTimeout(layoutTimer);
+			layoutTimer = window.setTimeout(layoutBoard, 90);
+		}
+
 		bindDialogs();
 		bindCardClicks();
+		bindThumbRelayout();
+		bindImageLoadingIndicator();
 
-		window.addEventListener('load', () => {
+		window.addEventListener('DOMContentLoaded', () => {
 			layoutBoard();
 		});
 
