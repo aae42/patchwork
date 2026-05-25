@@ -7,7 +7,8 @@
       "version":        "latest",
       "disable_plugin": true
     },
-    "goreleaser": "latest"
+    "goreleaser": "latest",
+    "watchexec":  "latest"
   },
   "shell": {
     "init_hook": [

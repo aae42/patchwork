@@ -108,8 +108,7 @@ and a tag-triggered workflow at [.github/workflows/release.yml](.github/workflow
 To cut a release, create and push a version tag:
 
 ```bash
-git tag "v$(cat VERSION)"
-git push origin "v$(cat VERSION)"
+just release
 ```
 
 GitHub Actions will build release archives and checksums for macOS, Linux, and
