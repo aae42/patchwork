@@ -660,7 +660,11 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 		});
 
 		let resizeTimer;
+		let lastWidth = window.innerWidth;
 		window.addEventListener('resize', () => {
+			const currentWidth = window.innerWidth;
+			if (currentWidth === lastWidth) return;
+			lastWidth = currentWidth;
 			window.clearTimeout(resizeTimer);
 			resizeTimer = window.setTimeout(layoutBoard, 120);
 		});
