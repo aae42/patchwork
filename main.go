@@ -584,6 +584,7 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
     }
     .thumb {
       width: 100%;
+      height: 180px;
       max-height: 180px;
       object-fit: cover;
       border-radius: 12px;
@@ -817,14 +818,25 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			measureHost.style.width = visibleColumns[0].getBoundingClientRect().width + 'px';
 			document.body.appendChild(measureHost);
 
+			const estimatedColumnHeights = visibleColumns.map(() => 0);
+
 			for (const card of cards) {
 				const probe = card.cloneNode(true);
 				probe.style.width = '100%';
+				for (const thumb of probe.querySelectorAll('.thumb')) {
+					thumb.style.height = '180px';
+					thumb.style.maxHeight = '180px';
+				}
 				measureHost.appendChild(probe);
-				const shortestColumn = visibleColumns.reduce((shortest, candidate) => {
-					return candidate.offsetHeight < shortest.offsetHeight ? candidate : shortest;
-				});
-				shortestColumn.appendChild(card);
+				const estimatedHeight = probe.getBoundingClientRect().height;
+				let shortestColumnIndex = 0;
+				for (let i = 1; i < estimatedColumnHeights.length; i++) {
+					if (estimatedColumnHeights[i] < estimatedColumnHeights[shortestColumnIndex]) {
+						shortestColumnIndex = i;
+					}
+				}
+				estimatedColumnHeights[shortestColumnIndex] += estimatedHeight;
+				visibleColumns[shortestColumnIndex].appendChild(card);
 				measureHost.removeChild(probe);
 			}
 
@@ -833,22 +845,8 @@ func writeIndexHTML(path string, config appConfig, cards []card) error {
 			board.style.opacity = '1';
 		}
 
-		function bindThumbRelayout() {
-			for (const image of document.querySelectorAll('#card-source .thumb')) {
-				image.addEventListener('load', debouncedLayoutBoard, { once: true });
-				image.addEventListener('error', debouncedLayoutBoard, { once: true });
-			}
-		}
-
-		let layoutTimer;
-		function debouncedLayoutBoard() {
-			window.clearTimeout(layoutTimer);
-			layoutTimer = window.setTimeout(layoutBoard, 90);
-		}
-
 		bindDialogs();
 		bindCardClicks();
-		bindThumbRelayout();
 		bindImageLoadingIndicator();
 
 		window.addEventListener('DOMContentLoaded', () => {

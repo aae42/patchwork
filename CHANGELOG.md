@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-05-26
+
+### Fixed
+
+- Boards with lots of images jump around a ton when loading, and if you refresh
+  quickly a bunch of times, sometimes cards would end up in different places!
+  this determines the placement when it first loads, which makes loading the
+  page a lot less jarring
+
 ## [0.3.0] - 2025-05-25
 
 ### Fixed
